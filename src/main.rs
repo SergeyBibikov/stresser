@@ -17,6 +17,10 @@ use std::string::String;
     let strd = std::str::from_utf8(&buf).unwrap();
     println!("{}",String::from(strd));*/
 
+    /*TODO
+    1. tls_get_request - потестить
+    2. */
+
 #[derive(Serialize, Deserialize)]
 struct Request {
     path: String,
@@ -30,133 +34,84 @@ fn main(){
     let init_data = init().unwrap();   
     let mut request_threads = vec![];
    
-   let counter: usize = init_data[3].as_str().parse::<usize>().unwrap();
+   let counter: usize = init_data[3].as_str().parse::<usize>().unwrap()/100usize;
     for _ in 0..counter{
         let path = init_data[0].clone();
         let domain = init_data[1].clone();
         let port = init_data[2].clone();
         request_threads.push(std::thread::spawn(move ||{
-            get_req(path,domain,port);
+            get_req(&path,&domain,&port);
         }));
     }
     for j in request_threads{
-        j.join().unwrap();
-    }
+            j.join().unwrap();
+        }
     print!("Done");
 
 }
 
 
-fn get_req(path: String, domain: String, port: String){
-    let domain_copy = domain.clone();
-    let temp = create_get_req(path, domain);
+fn get_req(path: &String, domain: &String, port: &String){
+    let mut connection = TcpStream::connect(format!("{}:{}",&domain,port)).unwrap();
+    let temp = create_get_req(&path, &domain);
     let request = temp.as_bytes();
-    let mut connection = TcpStream::connect(format!("{}:{}",domain_copy,port)).unwrap();
     for _ in 0..100{
         connection.write(request).unwrap();
-    }
-    //C:\Users\Sergey\VSW\r_ust\jsonparse\src\req.json    
+    }   
 }
 
-
-
-fn tls_get_req(path: String, domain: String){
-
+fn tls_get_req(path: String, domain: String, port: String){
     let connector = TlsConnector::new().unwrap();
-    let tcp_stream = TcpStream::connect("bash.im:443").unwrap();
-    let mut tls_stream = connector.connect("bash.im", tcp_stream).unwrap();
+    let tcp_stream = TcpStream::connect(format!("{}:{}",&domain,&port)).unwrap();
+    let mut tls_stream = connector.connect(&domain, tcp_stream).unwrap();
 
-    let mut result:Vec<u8> = Vec::new();
-    let request = create_get_req(path,domain);
-    tls_stream.write(request.as_bytes()).unwrap();
-    //tls_stream.write(b"GET / HTTP/1.1\r\nHost: bash.im\r\n\r\n").unwrap();
-    tls_stream.write(b"GET / HTTP/1.0\r\nConnection: close\r\n\r\n").unwrap();
-    tls_stream.read_to_end(&mut result).unwrap();
-
-    println!("{}",std::string::String::from_utf8(result).unwrap());
+    let temp = create_get_req(&path, &domain);
+    let request = temp.as_bytes();
+    tls_stream.write(request).unwrap();
 }
 
-fn create_get_req(path: String, domain: String)-> String {
-    let mut request: Vec<u8> = Vec::new();
-    let mut get = Vec::from("GET /");
-    let mut p_ath = Vec::from(path);
-    let mut http = Vec::from(" HTTP/1.1\r\n");
-    let mut host = Vec::from("Host: ");
-    let mut d_omain = Vec::from(domain);
-    let mut ending = Vec::from("\r\n\r\n");
-
-
-    request.append(&mut get);
-    request.append(&mut p_ath);
-    request.append(&mut http);
-    request.append(&mut host);
-    request.append(&mut d_omain);
-    request.append(&mut ending);
-    String::from_utf8(request).unwrap()
-    //println!("{:?}",request);
-    //print!("{}",String::from_utf8(request).unwrap());
+fn create_get_req(path: &String, domain: &String)-> String {
+    let mut request = String::from("GET /");
+    request.push_str(path);
+    request.push_str(" HTTP/1.1\r\n");
+    request.push_str("Host: ");
+    request.push_str(domain);
+    request.push_str("\r\n");
+    request.push_str("Connection: keep-alive");
+    request.push_str("\r\n\r\n");
+    request
 }
 
-fn create_post_request(path: String, domain: String, body:String)->String{
-    let mut request: Vec<u8> = Vec::new();
-    let mut get = Vec::from("POST /");
-    let mut p_ath = Vec::from(path);
-    let mut http = Vec::from(" HTTP/1.1\r\n");
-    let mut host = Vec::from("Host: ");
-    let mut d_omain = Vec::from(domain);
-    let mut line_end = Vec::from("\r\n");
-    let mut content = Vec::from("Content-type: application/json");
-    let mut ending = Vec::from("\r\n\r\n");
-    let mut b_ody = Vec::from(body);
-
-    request.append(&mut get);
-    request.append(&mut p_ath);
-    request.append(&mut http);
-    request.append(&mut host);
-    request.append(&mut d_omain);
-    request.append(&mut line_end);
-    request.append(&mut content);
-    request.append(&mut ending);
-    request.append(&mut b_ody);
-    String::from_utf8(request).unwrap()
+fn create_post_request(path: &String, domain: &String, body: &String) -> String{
+    let mut request: String = "POST /".to_string();
+    request.push_str(path);
+    request.push_str(" HTTP/1.1\r\n");
+    request.push_str("Host: ");
+    request.push_str(domain);
+    request.push_str("\r\n");
+    request.push_str("Content-Type: application/json\r\n");
+    request.push_str("Connection: keep-alive");
+    request.push_str("\r\n\r\n");
+    request.push_str(body);
+    request
 }
 
 fn post_req(path: String, domain: String, port: String, body: String){
-    let inner_dom = domain.clone();
-    let temp = create_post_request(path, domain, body);
-    let request = temp.as_bytes();   
-    let mut connection = TcpStream::connect(format!("{}:{}",inner_dom,port)).unwrap();
-    connection.write(request).unwrap();
-    
-    let mut result: Vec<u8> = Vec::new();
-    connection.read_to_end(&mut result).unwrap();    // DEBUG!
-    print!("{}", String::from_utf8(result).unwrap());
-    
+    let temp = create_post_request(&path, &domain, &body);
+    let request = temp.as_bytes();
+    let mut connection = TcpStream::connect(format!("{}:{}",&domain,port)).unwrap();
+    for _ in 0..100{
+        connection.write(request).unwrap();
+    }    
 }
 
-fn tls_post_req(){
+fn tls_post_req(path: String, domain: String, port: String, body: String){
     let connector = TlsConnector::new().unwrap();
-    let tcp_stream = TcpStream::connect("reqres.in:443").unwrap();
-    let mut tls_stream = connector.connect("reqres.in", tcp_stream).unwrap();
-    let request = "POST /api/user HTTP/1.1\r\nHost: reqres.in\r\nContent-type: application/json\r\n\r\n{\"name\":\"Jack\",\"job\":\"helper\"}".as_bytes();
+    let tcp_stream = TcpStream::connect(format!("{}:{}",&domain,port)).unwrap();
+    let mut tls_stream = connector.connect(&domain, tcp_stream).unwrap();
+    let temp = create_post_request(&path,&domain,&body);
+    let request = temp.as_bytes();
     tls_stream.write(request).unwrap();
-
-    let mut result:Vec<u8> = Vec::new();
-    tls_stream.read_to_end(&mut result).unwrap();
-    println!("{}",std::string::String::from_utf8(result).unwrap());
-
-}
-
-fn read_from_console(){
-    print!("Please set path something! ");
-    io::stdout().flush().unwrap();
-
-    let mut path = String::new();    
-    std::io::stdin().read_line(&mut path).expect("error: unable to read user input");
-    
-    //String::from(path.trim())
-    //print!("You entered \"{}\"",input.trim());
-    
 }
 
 fn init() -> Result<[String;6]>{
