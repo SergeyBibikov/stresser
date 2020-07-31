@@ -8,17 +8,16 @@ use std::string::String;
 
 
 pub fn get_req(path: &String, domain: &String, port: &String){
-    let mut connection = TcpStream::connect(format!("{}:{}",&domain,port)).unwrap();
-    let temp = create_get_req(&path, &domain);
+    let mut connection = TcpStream::connect(format!("{}:{}", domain, port)).unwrap();   
+    let temp = create_get_req(path, domain);
     let request = temp.as_bytes();
-    for _ in 0..100{
-        connection.write(request).unwrap();
-    }   
-}
+    connection.write(request).unwrap();
+}   
 
-pub fn tls_get_req(path: String, domain: String, port: String){
+
+pub fn tls_get_req(path: &String, domain: &String, port: &String){
     let connector = TlsConnector::new().unwrap();
-    let tcp_stream = TcpStream::connect(format!("{}:{}",&domain,&port)).unwrap();
+    let tcp_stream = TcpStream::connect(format!("{}:{}",domain,port)).unwrap();
     let mut tls_stream = connector.connect(&domain, tcp_stream).unwrap();
 
     let temp = create_get_req(&path, &domain);
