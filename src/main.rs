@@ -29,7 +29,8 @@ struct Request {
     domain: String,
     port: String,
     request_type: String,
-    request_num: String,
+    request_num: usize,
+    max_requests_per_connection:usize,
     headers: String,    
     path_to_body: String,
 }
@@ -37,21 +38,22 @@ struct Request {
 fn main(){
     let req_d = init().unwrap();    
     let mut request_threads = vec![];
-    let temp_req_body = fs::read(req_d.path_to_body).unwrap();
-    let req_body = String::from_utf8(temp_req_body).unwrap();
-    for _ in 0..1{
+    //let temp_req_body = fs::read(req_d.path_to_body).unwrap();
+    //let req_body = String::from_utf8(temp_req_body).unwrap();
+    let reqs = req_d.request_num/20;
+    let reqs_p_conn = req_d.max_requests_per_connection;
+    for _ in 0..20{
         let path = req_d.path.clone();
         let domain = req_d.domain.clone();
         let port = req_d.port.clone();
         let headers = req_d.headers.clone();
-        let body = req_body.clone();
+        //let body = req_body.clone();
         request_threads.push(std::thread::spawn(move ||{
-            //get_req(&path,&domain,&port,&headers);
-            tls_post_req(&path,&domain,&port,&body,&headers);                
+            get_req(&path,&domain,&port,&headers,&reqs,&reqs_p_conn);
+            //tls_post_req(&path,&domain,&port,&body,&headers);                
         }));
     }
-    //for j in request_threads{j.join().unwrap();} 
-    //print!("Done");
+    for j in request_threads{j.join().unwrap();} 
 
 }
 
@@ -72,8 +74,8 @@ fn init() -> Result<Request>{
     let temp = fs::read(req_data_path.as_str().trim()).unwrap();
     let data_to_serialize: &str = str::from_utf8(&temp).unwrap();
     let req: Request = serde_json::from_str(data_to_serialize)?;
-    println!("\n Start sending {} {} requests to the path /{} of {}:{} using {}.\n Body path: {}. Press Ctrl+C to exit",
-             req.request_num, req.request_type, req.path, req.domain, req.port,req.protocol, req.path_to_body.trim());
+    println!("\n Start sending {} {} requests( {} per connection) to the path /{} of {}:{} using {}.\n Body path: {}. Press Ctrl+C to exit",
+             req.request_num,req.request_type,req.max_requests_per_connection,req.path, req.domain, req.port,req.protocol, req.path_to_body.trim());
 
     Ok(req)
 }

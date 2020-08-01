@@ -4,20 +4,30 @@ use std::net::TcpStream;
 use std::string::String;
 
 
-pub fn post_req(path: &String, domain: &String, port: &String, body: &String, headers: &String){
-    let mut connection = TcpStream::connect(format!("{}:{}",domain,port)).unwrap();
+pub fn post_req(path: &String, domain: &String, port: &String, body: &String, headers: &String, reqs:&usize, reqs_per_connection: &usize){
+    let connections: usize = *reqs/(*reqs_per_connection);
     let temp = create_post_request(path, domain, body, headers);
-    let request = temp.as_bytes();    
-    connection.write(request).unwrap();
+    let request = temp.as_bytes();
+    for _ in 0..connections{
+        let mut connection = TcpStream::connect(format!("{}:{}",domain,port)).unwrap();
+            for _ in 0..*reqs_per_connection{  
+                connection.write(request).unwrap();
+            }
+    }
 }
 
-pub fn tls_post_req(path: &String, domain: &String, port: &String, body: &String, headers: &String){
-    let connector = TlsConnector::new().unwrap();
-    let tcp_stream = TcpStream::connect(format!("{}:{}",domain,port)).unwrap();
-    let mut tls_stream = connector.connect(domain, tcp_stream).unwrap();
+pub fn tls_post_req(path: &String, domain: &String, port: &String, body: &String, headers: &String, reqs:&usize, reqs_per_connection: &usize){
+    let connections: usize = *reqs/(*reqs_per_connection);
     let temp = create_post_request(path,domain,body,headers);
     let request = temp.as_bytes();
-    tls_stream.write(request).unwrap();
+    let connector = TlsConnector::new().unwrap();
+    for _ in 0..connections{
+        let tcp_stream = TcpStream::connect(format!("{}:{}",domain,port)).unwrap();
+        let mut tls_stream = connector.connect(domain, tcp_stream).unwrap(); 
+        for _ in 0..*reqs_per_connection{   
+            tls_stream.write(request).unwrap();
+        }
+    }
 }
 
 fn create_post_request(path: &String, domain: &String, body: &String, headers: &String) -> String{
