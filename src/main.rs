@@ -5,9 +5,7 @@ mod gets;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
-use std::io;
 use std::{fs,str};
-use std::io::prelude::*;
 use std::string::String;
 use posts::*;
 use gets::*;
@@ -52,19 +50,9 @@ fn main(){
 
 
 fn init() -> Result<Request>{
-    let start_message = r#" Hi! You need to provide two paths to start your test: the locations of you config file and the request body file.
- Both paths should be absolute and should not be put between quotation marks.
- Cheers!"#;
-    print!("{}",start_message);
-    //Paths init
-    let mut req_data_path: String = String::new(); 
-
-    print!("\n Please enter the config file location ");
-    io::stdout().flush().unwrap();  
-    io::stdin().read_line(&mut req_data_path).expect("No access to standard io");
-    
+   
     //Request data serialization
-    let temp = fs::read(req_data_path.as_str().trim()).unwrap();
+    let temp = fs::read("req.json").unwrap();
     let data_to_serialize: &str = str::from_utf8(&temp).unwrap();
     let req: Request = serde_json::from_str(data_to_serialize)?;
     println!("\n Start sending {} {} requests( {} per connection) to the path /{} of {}:{} using {}.\n Body path: {}. Press Ctrl+C to exit",
