@@ -48,11 +48,11 @@ fn main(){
     for j in request_threads{ j.join().unwrap(); } 
 }
 
-
 fn init() -> Result<Request>{
-   
+    let mut file = std::env::args();
+    file.next();
     //Request data serialization
-    let temp = fs::read("req.json").unwrap();
+    let temp = fs::read(file.next().unwrap()).unwrap();
     let data_to_serialize: &str = str::from_utf8(&temp).unwrap();
     let req: Request = serde_json::from_str(data_to_serialize)?;
     println!("\n Start sending {} {} requests( {} per connection) to the path /{} of {}:{} using {}.\n Body path: {}. Press Ctrl+C to exit",
